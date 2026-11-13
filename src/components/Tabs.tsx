@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "./LangProvider";
 import { IconBudget, IconGoals, IconHome, IconList, IconScan, IconUser } from "./Icons";
 
 const TABS = [
@@ -19,15 +20,16 @@ const GUEST_TABS = [
 
 export default function Tabs({ guest = false }: { guest?: boolean }) {
   const path = usePathname();
+  const t = useT();
   const tabs: { href: string; label: string; Icon: () => React.JSX.Element; fab?: boolean }[] = guest ? GUEST_TABS : TABS;
   return (
-    <nav className="tabs" aria-label="Principal" style={guest ? { gridTemplateColumns: "1fr 1fr" } : undefined}>
+    <nav className="tabs" aria-label={t("Principal")} style={guest ? { gridTemplateColumns: "1fr 1fr" } : undefined}>
       {tabs.map(({ href, label, Icon, fab }) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <Link key={href} href={href} aria-current={active ? "page" : undefined} className={fab ? "fab" : undefined}>
             {fab ? <span className="ic"><Icon /></span> : <Icon />}
-            {label}
+            {t(label)}
           </Link>
         );
       })}

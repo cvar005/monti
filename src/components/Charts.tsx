@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { money } from "@/lib/monti";
 import type { MonthSummary } from "@/lib/data";
+import { makeT, type Lang } from "@/lib/i18n";
 
 /** Cumulative spending this month against the average-pace line (budget spread evenly over the month), with an under/over bubble on today. */
-export function PaceChart({ s }: { s: MonthSummary }) {
+export function PaceChart({ s, lang }: { s: MonthSummary; lang: Lang }) {
+  const t = makeT(lang);
   const B = s.totalBudget || 1;
   const cur = s.profile.currency;
   const cum = s.byDay[s.byDay.length - 1] ?? 0;
@@ -16,16 +18,16 @@ export function PaceChart({ s }: { s: MonthSummary }) {
   const line = s.byDay.map((v, i) => `${X(i + 1).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
   const ex = X(s.month.day), ey = Y(cum);
   const col = under ? "#3EE6A8" : "#FF6B6B";
-  const bubble = under ? `${money(diff, cur, 0)} abajo` : `${money(-diff, cur, 0)} arriba`;
+  const bubble = under ? t("{amount} abajo", { amount: money(diff, cur, 0) }) : t("{amount} arriba", { amount: money(-diff, cur, 0) });
 
   return (
     <div className="card pace" style={{ gap: 8 }}>
       <div style={{ textAlign: "center" }}>
-        <div><span className="num lg">{money(B - cum, cur, 0)}</span> <b>disponible</b></div>
-        <div className="small">de {money(B, cur, 0)} presupuestado en {s.month.name}</div>
+        <div><span className="num lg">{money(B - cum, cur, 0)}</span> <b>{t("disponible")}</b></div>
+        <div className="small">{t("de {amount} presupuestado en {month}", { amount: money(B, cur, 0), month: s.month.name })}</div>
       </div>
       <div className="chart">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Vas ${bubble} del ritmo promedio`}>
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("Vas {bubble} del ritmo promedio", { bubble })}>
           <defs>
             <linearGradient id="pl" x1="0" x2="1"><stop offset="0" stopColor="#9FE8CB" /><stop offset="1" stopColor={col} /></linearGradient>
             <linearGradient id="pa" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".22" /><stop offset="1" stopColor={col} stopOpacity="0" /></linearGradient>
@@ -35,26 +37,27 @@ export function PaceChart({ s }: { s: MonthSummary }) {
           {s.byDay.length > 0 && <polygon points={`${X(1).toFixed(1)},${H - P} ${line} ${ex.toFixed(1)},${H - P}`} fill="url(#pa)" />}
           {s.byDay.length > 1 && <polyline points={line} fill="none" stroke="url(#pl)" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round" />}
           <circle cx={ex} cy={ey} r="5.5" fill="#fff" stroke={col} strokeWidth="3" />
-          <text x={W - P} y={Y(B) - 5} textAnchor="end" fontSize="9" fontWeight="700" fill="#5B6178">Ritmo promedio</text>
+          <text x={W - P} y={Y(B) - 5} textAnchor="end" fontSize="9" fontWeight="700" fill="#5B6178">{t("Ritmo promedio")}</text>
         </svg>
         <span className={`bubble${under ? "" : " over"}`} style={{ left: `${(ex / W) * 100}%`, top: `${(ey / H) * 100}%` }}>{bubble}</span>
       </div>
       <div className="row">
-        <span className="small">Puedes gastar hoy <b className="num" style={{ fontSize: 16, color: "var(--ink)" }}>{money(s.safeToday, cur)}</b></span>
-        <span className="small">Quedan {s.month.daysLeft} días</span>
+        <span className="small">{t("Puedes gastar hoy")} <b className="num" style={{ fontSize: 16, color: "var(--ink)" }}>{money(s.safeToday, cur)}</b></span>
+        <span className="small">{t("Quedan {n} días", { n: s.month.daysLeft })}</span>
       </div>
     </div>
   );
 }
 
 /** One ring per spending category: green, amber from 80%, red when over. */
-export function Rings({ s }: { s: MonthSummary }) {
+export function Rings({ s, lang }: { s: MonthSummary; lang: Lang }) {
+  const t = makeT(lang);
   const C = 2 * Math.PI * 27;
   return (
     <>
       <div className="row">
-        <span className="label">Presupuestos</span>
-        <Link className="link" href="/presupuesto">Categorías ›</Link>
+        <span className="label">{t("Presupuestos")}</span>
+        <Link className="link" href="/presupuesto">{t("Categorías")} ›</Link>
       </div>
       <div className="rings">
         {s.spendCats.map((c) => {
@@ -69,9 +72,9 @@ export function Rings({ s }: { s: MonthSummary }) {
                 </svg>
                 <span className="em">{c.icon}</span>
               </span>
-              <span className="name">{c.label}</span>
+              <span className="name">{t(c.label)}</span>
               <b>{money(Math.abs(d), s.profile.currency, 0)}</b>
-              <span className="small">{d < 0 ? "excedido" : "disponible"}</span>
+              <span className="small">{d < 0 ? t("excedido") : t("disponible")}</span>
             </Link>
           );
         })}

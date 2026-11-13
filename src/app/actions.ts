@@ -1,8 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getT } from "@/lib/lang";
+import { isLang, LANG_COOKIE } from "@/lib/i18n";
 import { CATEGORIES, category, MAX_GOAL_PEOPLE, monthInfo, money, RELATIONSHIPS, todayISO, type Split } from "@/lib/monti";
 
 async function session() {
@@ -19,6 +22,14 @@ function validSplit(split: Split) {
   return total === 100;
 }
 
+// ---------- Language ----------
+
+export async function setLanguage(lang: string) {
+  if (!isLang(lang)) return;
+  (await cookies()).set(LANG_COOKIE, lang, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  revalidatePath("/", "layout");
+}
+
 // ---------- Onboarding & profile ----------
 
 export async function completeOnboarding(input: {
@@ -29,14 +40,15 @@ export async function completeOnboarding(input: {
   goal: { name: string; target: number; deadline: string; theme: string } | null;
 }) {
   const { supabase, user } = await session();
+  const { t } = await getT();
   if (!input.name.trim() || !(input.income > 0) || !validSplit(input.split)) {
-    return { error: "Revisa tu nombre, tu ingreso y que el reparto sume 100%." };
+    return { error: t("Revisa tu nombre, tu ingreso y que el reparto sume 100%.") };
   }
   const { error } = await supabase
     .from("profiles")
     .update({ name: input.name.trim(), currency: input.currency, income: input.income, split: input.split, onboarded: true })
     .eq("id", user.id);
-  if (error) return { error: "No pudimos guardar tu perfil. Intenta de nuevo." };
+  if (error) return { error: t("No pudimos guardar tu perfil. Intenta de nuevo.") };
   if (input.goal && input.goal.name.trim() && input.goal.target > 0 && input.goal.deadline > todayISO()) {
     await supabase.from("goals").insert({
       name: input.goal.name.trim(),
@@ -59,10 +71,11 @@ export async function updateProfile(formData: FormData) {
 
 export async function updateBudget(input: { income: number; split: Split }) {
   const { supabase, user } = await session();
-  if (!(input.income > 0) || !validSplit(input.split)) return { error: "El reparto debe sumar 100%." };
+  const { t } = await getT();
+  if (!(input.income > 0) || !validSplit(input.split)) return { error: t("El reparto debe sumar 100%.") };
   await supabase.from("profiles").update({ income: input.income, split: input.split }).eq("id", user.id);
   revalidatePath("/", "layout");
-  return { ok: true };
+  return { ok: true, message: t("Presupuesto guardado.") };
 }
 
 export async function signOut() {
@@ -84,10 +97,11 @@ export async function addTransaction(input: {
   confidence?: number | null;
 }) {
   const { supabase, user } = await session();
+  const { t } = await getT();
   const merchant = input.merchant.trim();
   const today = todayISO();
-  if (!merchant || !(input.amount > 0)) return { error: "Agrega la tienda y un monto." };
-  if (!CATEGORIES.some((c) => c.id === input.category && c.id !== "goals")) return { error: "Elige una categoría." };
+  if (!merchant || !(input.amount > 0)) return { error: t("Agrega la tienda y un monto.") };
+  if (!CATEGORIES.some((c) => c.id === input.category && c.id !== "goals")) return { error: t("Elige una categoría.") };
   const date = /^\d{4}-\d{2}-\d{2}$/.test(input.date) && input.date <= today ? input.date : today;
 
   const m = monthInfo(today);
@@ -104,20 +118,20 @@ export async function addTransaction(input: {
     receipt_path: input.receiptPath ?? null,
     ai_confidence: input.confidence ?? null,
   });
-  if (error) return { error: "No pudimos guardar el gasto. Intenta de nuevo." };
+  if (error) return { error: t("No pudimos guardar el gasto. Intenta de nuevo.") };
   revalidatePath("/", "layout");
 
-  const saved = `${money(input.amount, profile?.currency ?? "GTQ")} guardado en ${category(input.category).label}.`;
+  const label = t(category(input.category).label);
+  const saved = t("{amount} guardado en {category}.", { amount: money(input.amount, profile?.currency ?? "GTQ"), category: label });
   if (!profile || date < m.start) return { ok: true, message: saved, level: "good" as const };
   const budget = (Number(profile.income) * ((profile.split as Split)[input.category as keyof Split] ?? 0)) / 100;
   const before = (monthTx ?? []).reduce((s, t) => s + Number(t.amount), 0);
   const after = before + input.amount;
-  const label = category(input.category).label;
   if (budget > 0 && after >= budget && before < budget) {
-    return { ok: true, level: "bad" as const, message: `${label} se pasó del presupuesto por ${money(after - budget, profile.currency, 0)}.` };
+    return { ok: true, level: "bad" as const, message: t("{category} se pasó del presupuesto por {amount}.", { category: label, amount: money(after - budget, profile.currency, 0) }) };
   }
   if (budget > 0 && after >= budget * 0.8 && before < budget * 0.8) {
-    return { ok: true, level: "warn" as const, message: `Ojo: ${label} va en ${Math.round((after / budget) * 100)}% de su presupuesto.` };
+    return { ok: true, level: "warn" as const, message: t("Ojo: {category} va en {pct}% de su presupuesto.", { category: label, pct: Math.round((after / budget) * 100) }) };
   }
   return { ok: true, level: "good" as const, message: saved };
 }
@@ -131,17 +145,18 @@ export async function setTransactionCategory(id: string, newCategory: string) {
 
 export async function updateTransaction(id: string, input: { merchant: string; amount: number; category: string; date: string }) {
   const { supabase } = await session();
+  const { t } = await getT();
   const merchant = input.merchant.trim();
-  if (!merchant || !(input.amount > 0)) return { error: "Agrega la tienda y un monto." };
-  if (!CATEGORIES.some((c) => c.id === input.category && c.id !== "goals")) return { error: "Elige una categoría." };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || input.date > todayISO()) return { error: "Elige una fecha de hoy o antes." };
+  if (!merchant || !(input.amount > 0)) return { error: t("Agrega la tienda y un monto.") };
+  if (!CATEGORIES.some((c) => c.id === input.category && c.id !== "goals")) return { error: t("Elige una categoría.") };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || input.date > todayISO()) return { error: t("Elige una fecha de hoy o antes.") };
   const { error } = await supabase
     .from("transactions")
     .update({ merchant, amount: Math.round(input.amount * 100) / 100, category: input.category, date: input.date, reviewed: true })
     .eq("id", id);
-  if (error) return { error: "No pudimos guardar el cambio. Intenta de nuevo." };
+  if (error) return { error: t("No pudimos guardar el cambio. Intenta de nuevo.") };
   revalidatePath("/", "layout");
-  return { ok: true };
+  return { ok: true, message: t("Gasto actualizado.") };
 }
 
 export async function deleteTransaction(id: string) {
@@ -193,12 +208,13 @@ export async function createGoal(formData: FormData) {
 
 export async function addContribution(goalId: string, amount: number) {
   const { supabase } = await session();
-  if (!(amount > 0)) return { error: "Escribe un monto." };
+  const { t } = await getT();
+  if (!(amount > 0)) return { error: t("Escribe un monto.") };
   const { data: goal } = await supabase.from("goals").select("target").eq("id", goalId).single();
   const { data: rows } = await supabase.from("contributions").select("amount").eq("goal_id", goalId);
   const before = (rows ?? []).reduce((s, r) => s + Number(r.amount), 0);
   const { error } = await supabase.from("contributions").insert({ goal_id: goalId, amount: Math.round(amount * 100) / 100 });
-  if (error) return { error: "No pudimos guardar el aporte." };
+  if (error) return { error: t("No pudimos guardar el aporte.") };
   revalidatePath("/", "layout");
   const target = Number(goal?.target ?? 0);
   const milestone = target ? [25, 50, 75, 100].find((p) => (before / target) * 100 < p && ((before + amount) / target) * 100 >= p) : undefined;
@@ -221,11 +237,12 @@ export async function deleteGoal(goalId: string) {
 
 export async function createInvite(goalId: string, relationship: string) {
   const { supabase } = await session();
+  const { t } = await getT();
   const rel = RELATIONSHIPS.some((r) => r.id === relationship) ? relationship : "otro";
   const { count } = await supabase.from("goal_members").select("user_id", { count: "exact", head: true }).eq("goal_id", goalId);
-  if ((count ?? 0) >= MAX_GOAL_PEOPLE) return { error: `Una meta puede tener hasta ${MAX_GOAL_PEOPLE} personas.` };
+  if ((count ?? 0) >= MAX_GOAL_PEOPLE) return { error: t("Una meta puede tener hasta {n} personas.", { n: MAX_GOAL_PEOPLE }) };
   const { data, error } = await supabase.from("goal_invites").insert({ goal_id: goalId, relationship: rel }).select("code").single();
-  if (error || !data) return { error: "No pudimos crear la invitación." };
+  if (error || !data) return { error: t("No pudimos crear la invitación.") };
   return { code: data.code as string };
 }
 

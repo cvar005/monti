@@ -205,3 +205,8 @@ a { color: inherit; text-decoration: none; }
 @keyframes beam { to { top: 100%; } }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Language switch on the teal welcome screens */
+.langsw { display: inline-flex; gap: 3px; background: rgba(255, 255, 255, 0.16); border-radius: 99px; padding: 3px; }
+.langsw button { border: 0; cursor: pointer; background: none; color: #fff; font-weight: 800; font-size: 12px; padding: 6px 12px; border-radius: 99px; }
+.langsw button[aria-pressed="true"] { background: #fff; color: var(--teal); }

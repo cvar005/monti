@@ -1,4 +1,6 @@
 // Shared constants and pure helpers (no server-only imports, safe in client components).
+// Labels here are Spanish; screens translate them with t(label).
+import { dateLocale, makeT, type Lang } from "./i18n";
 
 export const CATEGORIES = [
   { id: "housing", label: "Vivienda", icon: "🏠", bg: "#E6F0FF" },
@@ -104,7 +106,7 @@ export function periodRange(p: string, today = todayISO()): { from: string | nul
   return { from: null, to: null };
 }
 
-export function monthInfo(today = todayISO()) {
+export function monthInfo(today = todayISO(), lang: Lang = "es") {
   const d = parseISO(today);
   const year = d.getFullYear();
   const month = d.getMonth();
@@ -112,7 +114,7 @@ export function monthInfo(today = todayISO()) {
   const day = d.getDate();
   const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
-  const name = d.toLocaleDateString("es-GT", { month: "long" });
+  const name = d.toLocaleDateString(dateLocale(lang), { month: "long" });
   return { year, month, day, daysInMonth, daysLeft: daysInMonth - day + 1, start, end, name };
 }
 
@@ -125,13 +127,14 @@ export function weeksUntil(deadline: string, today = todayISO()) {
   return Math.max(1, Math.ceil(ms / (7 * 864e5)));
 }
 
-export function friendlyDate(iso: string, today = todayISO()) {
-  if (iso === today) return "Hoy";
+export function friendlyDate(iso: string, today = todayISO(), lang: Lang = "es") {
+  const t = makeT(lang);
+  if (iso === today) return t("Hoy");
   const y = parseISO(today);
   y.setDate(y.getDate() - 1);
   const yISO = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
-  if (iso === yISO) return "Ayer";
-  return parseISO(iso).toLocaleDateString("es-GT", { day: "numeric", month: "short" });
+  if (iso === yISO) return t("Ayer");
+  return parseISO(iso).toLocaleDateString(dateLocale(lang), { day: "numeric", month: "short" });
 }
 
 /** Category from the user's rules: the first rule whose text appears in the store name. */

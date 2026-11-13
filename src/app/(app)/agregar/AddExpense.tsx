@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addTransaction } from "@/app/actions";
 import { ruleCategory, SPEND_CATEGORIES } from "@/lib/monti";
 import { IconScan } from "@/components/Icons";
+import { useT } from "@/components/LangProvider";
 
 type Draft = { merchant: string; amount: string; category: string; date: string };
 type Reading = { confidence: number; receiptPath: string | null; originalTotal: number; originalCurrency: string };
@@ -22,6 +23,7 @@ async function shrink(file: File): Promise<Blob> {
 
 export default function AddExpense({ currency, rules, today }: { currency: string; rules: { match: string; category: string }[]; today: string }) {
   const router = useRouter();
+  const t = useT();
   const [mode, setMode] = useState<"photo" | "manual">("photo");
   const [phase, setPhase] = useState<"pick" | "reading" | "review">("pick");
   const [preview, setPreview] = useState<string | null>(null);
@@ -43,14 +45,14 @@ export default function AddExpense({ currency, rules, today }: { currency: strin
       const res = await fetch("/api/scan", { method: "POST", body });
       const data = await res.json();
       if (!res.ok) {
-        setMsg({ level: "warn", text: data.error ?? "No pudimos leer el recibo. Llénalo a mano." });
+        setMsg({ level: "warn", text: data.error ?? t("No pudimos leer el recibo. Llénalo a mano.") });
         setReading(null);
       } else {
         setDraft({ merchant: data.merchant, amount: String(data.amount), category: data.category, date: data.date });
         setReading({ confidence: data.confidence, receiptPath: data.receiptPath, originalTotal: data.originalTotal, originalCurrency: data.originalCurrency });
       }
     } catch {
-      setMsg({ level: "warn", text: "Sin conexión. Llénalo a mano o intenta de nuevo." });
+      setMsg({ level: "warn", text: t("Sin conexión. Llénalo a mano o intenta de nuevo.") });
     }
     setPhase("review");
   }
@@ -68,7 +70,7 @@ export default function AddExpense({ currency, rules, today }: { currency: strin
         confidence: reading?.confidence ?? null,
       });
       if (res.error) return setMsg({ level: "bad", text: res.error });
-      setMsg({ level: res.level ?? "good", text: res.message ?? "Gasto guardado." });
+      setMsg({ level: res.level ?? "good", text: res.message ?? t("Gasto guardado.") });
       reset();
       router.refresh();
     });
@@ -86,48 +88,48 @@ export default function AddExpense({ currency, rules, today }: { currency: strin
     <div className="card">
       {reading && (
         <div className="row">
-          <span className="label">Revisa los datos</span>
-          <span className={`pill ${reading.confidence >= 0.9 ? "good" : "warn"}`}>{Math.round(reading.confidence * 100)}% seguro</span>
+          <span className="label">{t("Revisa los datos")}</span>
+          <span className={`pill ${reading.confidence >= 0.9 ? "good" : "warn"}`}>{t("{pct}% seguro", { pct: Math.round(reading.confidence * 100) })}</span>
         </div>
       )}
       <div className="field">
-        <label htmlFor="m">Tienda</label>
+        <label htmlFor="m">{t("Tienda")}</label>
         <input id="m" className="inp" value={draft.merchant} autoComplete="off"
           onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
           onBlur={() => { const c = ruleCategory(draft.merchant, rules); if (c) setDraft((d) => ({ ...d, category: c })); }}
-          placeholder="Supermercado La Torre" />
+          placeholder={t("Supermercado La Torre")} />
       </div>
       <div className="two">
         <div className="field">
-          <label htmlFor="a">Monto ({sym})</label>
+          <label htmlFor="a">{t("Monto")} ({sym})</label>
           <input id="a" className="inp" type="number" inputMode="decimal" min="0" step="0.01" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} placeholder="85.00" />
         </div>
         <div className="field">
-          <label htmlFor="d">Fecha</label>
+          <label htmlFor="d">{t("Fecha")}</label>
           <input id="d" className="inp" type="date" max={today} value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
         </div>
       </div>
       <div className="field">
-        <label htmlFor="c">Categoría</label>
+        <label htmlFor="c">{t("Categoría")}</label>
         <select id="c" className="inp" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
-          {SPEND_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+          {SPEND_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.icon} {t(c.label)}</option>)}
         </select>
       </div>
       {reading && reading.originalCurrency !== currency && (
-        <p className="small">El recibo decía {reading.originalCurrency} {reading.originalTotal}. Lo convertimos a {sym} con tipo de cambio de 7.70.</p>
+        <p className="small">{t("El recibo decía {currency} {total}. Lo convertimos a {symbol} con tipo de cambio de 7.70.", { currency: reading.originalCurrency, total: reading.originalTotal, symbol: sym })}</p>
       )}
       <button className="btn" type="button" onClick={save} disabled={pending || !draft.merchant.trim() || !(Number(draft.amount) > 0)}>
-        {pending ? "Guardando..." : "Guardar gasto"}
+        {pending ? t("Guardando...") : t("Guardar gasto")}
       </button>
     </div>
   );
 
   return (
     <>
-      <div className="hdr"><h1>Agregar gasto</h1></div>
+      <div className="hdr"><h1>{t("Agregar gasto")}</h1></div>
       <div className="seg" role="group">
-        <button type="button" aria-pressed={mode === "photo"} onClick={() => { setMode("photo"); reset(); }}>Foto del recibo</button>
-        <button type="button" aria-pressed={mode === "manual"} onClick={() => { setMode("manual"); reset(); }}>A mano</button>
+        <button type="button" aria-pressed={mode === "photo"} onClick={() => { setMode("photo"); reset(); }}>{t("Foto del recibo")}</button>
+        <button type="button" aria-pressed={mode === "manual"} onClick={() => { setMode("manual"); reset(); }}>{t("A mano")}</button>
       </div>
 
       {msg && <div className={`notice ${msg.level}`} role="status">{msg.text}</div>}
@@ -136,22 +138,22 @@ export default function AddExpense({ currency, rules, today }: { currency: strin
         <label className="drop">
           <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={(e) => onFile(e.target.files?.[0])} />
           <span style={{ color: "var(--teal)", width: 40, height: 40, display: "block" }}><IconScan /></span>
-          <b>Toma una foto del recibo</b>
-          <span className="small">También sirve una factura FEL o una captura de tu app del banco.</span>
+          <b>{t("Toma una foto del recibo")}</b>
+          <span className="small">{t("También sirve una factura FEL o una captura de tu app del banco.")}</span>
         </label>
       )}
 
       {mode === "photo" && phase !== "pick" && preview && (
         <div className="preview">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="Foto del recibo" />
+          <img src={preview} alt={t("Foto del recibo")} />
           {phase === "reading" && <div className="beam" />}
         </div>
       )}
 
-      {mode === "photo" && phase === "reading" && <div className="card"><b>Leyendo tu recibo...</b><span className="small">Tarda unos segundos.</span></div>}
+      {mode === "photo" && phase === "reading" && <div className="card"><b>{t("Leyendo tu recibo...")}</b><span className="small">{t("Tarda unos segundos.")}</span></div>}
       {((mode === "photo" && phase === "review") || mode === "manual") && form}
-      {mode === "photo" && phase === "review" && <button className="link" type="button" onClick={reset} style={{ justifySelf: "center" }}>Tomar otra foto</button>}
+      {mode === "photo" && phase === "review" && <button className="link" type="button" onClick={reset} style={{ justifySelf: "center" }}>{t("Tomar otra foto")}</button>}
     </>
   );
 }

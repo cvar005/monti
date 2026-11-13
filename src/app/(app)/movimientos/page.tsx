@@ -2,10 +2,12 @@ import Link from "next/link";
 import { requireFullAccess, type Transaction } from "@/lib/data";
 import { friendlyDate, money, PERIODS, periodRange, ruleCategory, SPEND_CATEGORIES, todayISO } from "@/lib/monti";
 import ExpenseRow from "./ExpenseRow";
+import { getT } from "@/lib/lang";
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
 export default async function ExpensesPage({ searchParams }: PageProps<"/movimientos">) {
+  const { t, lang } = await getT();
   const sp = await searchParams;
   const today = todayISO();
   const filter = typeof sp.c === "string" && SPEND_CATEGORIES.some((x) => x.id === sp.c) ? sp.c : "all";
@@ -41,49 +43,49 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/movimie
 
   return (
     <>
-      <div className="hdr"><h1>Gastos</h1></div>
+      <div className="hdr"><h1>{t("Gastos")}</h1></div>
 
       <div className="chips">
         {PERIODS.map((x) => (
-          <Link key={x.id} className="chip" aria-pressed={period === x.id} href={href({ ...catQs, ...(x.id === "month" ? {} : { p: x.id }) })}>{x.label}</Link>
+          <Link key={x.id} className="chip" aria-pressed={period === x.id} href={href({ ...catQs, ...(x.id === "month" ? {} : { p: x.id }) })}>{t(x.label)}</Link>
         ))}
       </div>
       <details className="range" open={custom}>
-        <summary>Elegir fechas</summary>
+        <summary>{t("Elegir fechas")}</summary>
         <form action="/movimientos" className="two">
           {filter !== "all" && <input type="hidden" name="c" value={filter} />}
           <div className="field">
-            <label htmlFor="desde">Desde</label>
+            <label htmlFor="desde">{t("Desde")}</label>
             <input id="desde" name="desde" type="date" className="inp" max={today} defaultValue={range.from ?? ""} />
           </div>
           <div className="field">
-            <label htmlFor="hasta">Hasta</label>
+            <label htmlFor="hasta">{t("Hasta")}</label>
             <input id="hasta" name="hasta" type="date" className="inp" max={today} defaultValue={range.to ?? ""} />
           </div>
-          <button className="btn alt" type="submit" style={{ gridColumn: "1 / -1" }}>Ver gastos</button>
+          <button className="btn alt" type="submit" style={{ gridColumn: "1 / -1" }}>{t("Ver gastos")}</button>
         </form>
       </details>
 
       <div className="chips">
-        <Link className="chip" aria-pressed={filter === "all"} href={href(dateQs)}>Todas</Link>
+        <Link className="chip" aria-pressed={filter === "all"} href={href(dateQs)}>{t("Todas")}</Link>
         {SPEND_CATEGORIES.map((x) => (
-          <Link key={x.id} className="chip" aria-pressed={filter === x.id} href={href({ ...dateQs, c: x.id })}>{x.icon} {x.label}</Link>
+          <Link key={x.id} className="chip" aria-pressed={filter === x.id} href={href({ ...dateQs, c: x.id })}>{x.icon} {t(x.label)}</Link>
         ))}
       </div>
 
       {tx.length > 0 && (
         <div className="card" style={{ gap: 2 }}>
-          <span className="small">Total {custom ? "en esas fechas" : PERIODS.find((x) => x.id === period)?.label.toLowerCase()}</span>
+          <span className="small">{custom ? t("Total en esas fechas") : period === "all" ? t("Total") : t("Total {period}", { period: t(PERIODS.find((x) => x.id === period)?.label ?? "").toLowerCase() })}</span>
           <span className="num lg">{money(total, profile.currency)}</span>
-          <span className="small">{tx.length} {tx.length === 1 ? "gasto" : "gastos"}</span>
+          <span className="small">{tx.length === 1 ? t("1 gasto") : t("{n} gastos", { n: tx.length })}</span>
         </div>
       )}
 
-      {tx.length === 0 && <div className="empty">No hay gastos en estas fechas. <Link className="link" href="/agregar">Agrega uno</Link></div>}
+      {tx.length === 0 && <div className="empty">{t("No hay gastos en estas fechas.")} <Link className="link" href="/agregar">{t("Agrega uno")}</Link></div>}
       {[...groups.entries()].map(([date, rows]) => (
         <div key={date} className="card flat">
           <div className="row" style={{ paddingTop: 12 }}>
-            <span className="label">{friendlyDate(date, today)}</span>
+            <span className="label">{friendlyDate(date, today, lang)}</span>
             <span className="small">-{money(rows.reduce((s, r) => s + r.amount, 0), profile.currency)}</span>
           </div>
           {rows.map((t) => (

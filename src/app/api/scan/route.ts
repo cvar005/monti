@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { readReceipt } from "@/lib/receipt";
+import { getT } from "@/lib/lang";
 import { ruleCategory, todayISO, USD_TO_GTQ } from "@/lib/monti";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 export async function POST(request: Request) {
+  const { t } = await getT();
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Inicia sesión para escanear." }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t("Inicia sesión para escanear.") }, { status: 401 });
 
   const form = await request.formData();
   const file = form.get("image");
-  if (!(file instanceof File)) return NextResponse.json({ error: "No llegó ninguna imagen." }, { status: 400 });
+  if (!(file instanceof File)) return NextResponse.json({ error: t("No llegó ninguna imagen.") }, { status: 400 });
   const mediaType = TYPES.find((t) => t === file.type);
-  if (!mediaType) return NextResponse.json({ error: "Usa una foto JPG, PNG o WebP." }, { status: 400 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: "La foto pesa más de 5 MB." }, { status: 400 });
+  if (!mediaType) return NextResponse.json({ error: t("Usa una foto JPG, PNG o WebP.") }, { status: 400 });
+  if (file.size > MAX_BYTES) return NextResponse.json({ error: t("La foto pesa más de 5 MB.") }, { status: 400 });
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
@@ -28,10 +30,10 @@ export async function POST(request: Request) {
 
   const reading = await readReceipt(bytes.toString("base64"), mediaType);
   if (!reading) {
-    return NextResponse.json({ error: "No pudimos leer el recibo. Llénalo a mano." }, { status: 422 });
+    return NextResponse.json({ error: t("No pudimos leer el recibo. Llénalo a mano.") }, { status: 422 });
   }
   if (!reading.is_receipt) {
-    return NextResponse.json({ error: "Eso no parece un recibo. Intenta con otra foto." }, { status: 422 });
+    return NextResponse.json({ error: t("Eso no parece un recibo. Intenta con otra foto.") }, { status: 422 });
   }
 
   const [{ data: profile }, { data: rules }] = await Promise.all([

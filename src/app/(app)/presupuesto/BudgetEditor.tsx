@@ -3,14 +3,16 @@
 import { useState, useTransition } from "react";
 import { updateBudget } from "@/app/actions";
 import { level, money, type Split } from "@/lib/monti";
+import { useT } from "@/components/LangProvider";
 
 type Cat = { id: keyof Split; label: string; icon: string; bg: string; spent: number; pct: number };
 
 export default function BudgetEditor({ currency, income, split, cats }: { currency: string; income: number; split: Split; cats: Cat[] }) {
+  const t = useT();
   const [edit, setEdit] = useState(false);
   const [inc, setInc] = useState(String(income));
   const [sp, setSp] = useState<Split>(split);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
   const total = Object.values(sp).reduce((s, v) => s + v, 0);
   const incomeNum = edit ? Number(inc) || 0 : income;
@@ -18,8 +20,8 @@ export default function BudgetEditor({ currency, income, split, cats }: { curren
   function save() {
     start(async () => {
       const res = await updateBudget({ income: Number(inc), split: sp });
-      if (res.error) setMsg(res.error);
-      else { setMsg("Presupuesto guardado."); setEdit(false); }
+      if (res.error) setMsg({ ok: false, text: res.error });
+      else { setMsg({ ok: true, text: res.message ?? "" }); setEdit(false); }
     });
   }
 
@@ -28,17 +30,17 @@ export default function BudgetEditor({ currency, income, split, cats }: { curren
       <div className="card">
         <div className="row">
           <div>
-            <div className="small">Ingreso mensual</div>
+            <div className="small">{t("Ingreso mensual")}</div>
             {edit ? (
-              <input aria-label="Ingreso mensual" className="inp big" type="number" inputMode="decimal" value={inc} onChange={(e) => setInc(e.target.value)} style={{ marginTop: 4 }} />
+              <input aria-label={t("Ingreso mensual")} className="inp big" type="number" inputMode="decimal" value={inc} onChange={(e) => setInc(e.target.value)} style={{ marginTop: 4 }} />
             ) : (
               <b className="num md">{money(income, currency, 0)}</b>
             )}
           </div>
-          {!edit && <button className="link" type="button" onClick={() => { setEdit(true); setMsg(""); }}>Editar</button>}
+          {!edit && <button className="link" type="button" onClick={() => { setEdit(true); setMsg(null); }}>{t("Editar")}</button>}
         </div>
-        {edit && <span className={`pill ${total === 100 ? "good" : "bad"}`} style={{ justifySelf: "start" }}>Total {total}%{total !== 100 ? " · debe sumar 100%" : ""}</span>}
-        {msg && <div className={`notice ${msg.includes("guardado") ? "good" : "bad"}`}>{msg}</div>}
+        {edit && <span className={`pill ${total === 100 ? "good" : "bad"}`} style={{ justifySelf: "start" }}>{t("Total")} {total}%{total !== 100 ? ` · ${t("debe sumar 100%")}` : ""}</span>}
+        {msg && <div className={`notice ${msg.ok ? "good" : "bad"}`}>{msg.text}</div>}
       </div>
 
       <div className="card flat">
@@ -55,9 +57,9 @@ export default function BudgetEditor({ currency, income, split, cats }: { curren
                 </span>
                 {edit ? (
                   <span className="step">
-                    <button type="button" aria-label={`Menos ${c.label}`} onClick={() => setSp({ ...sp, [c.id]: Math.max(0, sp[c.id] - 5) })}>−</button>
+                    <button type="button" aria-label={t("Menos {category}", { category: c.label })} onClick={() => setSp({ ...sp, [c.id]: Math.max(0, sp[c.id] - 5) })}>−</button>
                     <b>{sp[c.id]}%</b>
-                    <button type="button" aria-label={`Más ${c.label}`} onClick={() => setSp({ ...sp, [c.id]: Math.min(100, sp[c.id] + 5) })}>+</button>
+                    <button type="button" aria-label={t("Más {category}", { category: c.label })} onClick={() => setSp({ ...sp, [c.id]: Math.min(100, sp[c.id] + 5) })}>+</button>
                   </span>
                 ) : (
                   <span className={`pill ${level(pct)}`}>{Math.round(pct)}%</span>
@@ -65,8 +67,8 @@ export default function BudgetEditor({ currency, income, split, cats }: { curren
               </div>
               <div className="bar"><i className={c.id === "goals" ? "teal" : level(pct)} style={{ width: `${Math.min(100, pct)}%` }} /></div>
               <div className="row small">
-                <span>{money(c.spent, currency, 0)} de {money(budget, currency, 0)}</span>
-                <span style={{ color: d < 0 ? "var(--bad)" : undefined }}>{d < 0 ? `${money(-d, currency, 0)} de más` : `Quedan ${money(d, currency, 0)}`}</span>
+                <span>{t("{saved} de {target}", { saved: money(c.spent, currency, 0), target: money(budget, currency, 0) })}</span>
+                <span style={{ color: d < 0 ? "var(--bad)" : undefined }}>{d < 0 ? t("{amount} de más", { amount: money(-d, currency, 0) }) : t("Quedan {amount}", { amount: money(d, currency, 0) })}</span>
               </div>
             </div>
           );
@@ -75,8 +77,8 @@ export default function BudgetEditor({ currency, income, split, cats }: { curren
 
       {edit && (
         <div className="two">
-          <button className="btn alt" type="button" onClick={() => { setEdit(false); setSp(split); setInc(String(income)); }}>Cancelar</button>
-          <button className="btn" type="button" disabled={pending || total !== 100 || !(Number(inc) > 0)} onClick={save}>{pending ? "Guardando..." : "Guardar"}</button>
+          <button className="btn alt" type="button" onClick={() => { setEdit(false); setSp(split); setInc(String(income)); }}>{t("Cancelar")}</button>
+          <button className="btn" type="button" disabled={pending || total !== 100 || !(Number(inc) > 0)} onClick={save}>{pending ? t("Guardando...") : t("Guardar")}</button>
         </div>
       )}
     </>

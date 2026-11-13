@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { addContribution, createInvite, deleteGoal, leaveGoal, setGoalShare } from "@/app/actions";
 import { MAX_GOAL_PEOPLE, money, RELATIONSHIPS, relationshipLabel } from "@/lib/monti";
+import { useT } from "@/components/LangProvider";
 
 export default function GoalActions(props: {
   goalId: string;
@@ -16,6 +17,7 @@ export default function GoalActions(props: {
   peopleCount: number;
 }) {
   const { goalId, goalName, currency, myWeekly, doneThisWeek, shared, isOwner, ownerShare, peopleCount } = props;
+  const t = useT();
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState<{ level: string; text: string } | null>(null);
   const [relationship, setRelationship] = useState("pareja");
@@ -33,7 +35,7 @@ export default function GoalActions(props: {
       setAmount("");
       setMsg({
         level: "good",
-        text: res.milestone ? `¡Hito! Llegaron al ${res.milestone}% de la meta. 🎉` : `¡Bien! ${money(value, currency)} más cerca.`,
+        text: res.milestone ? t("¡Hito! Llegaron al {pct}% de la meta. 🎉", { pct: res.milestone }) : t("¡Bien! {amount} más cerca.", { amount: money(value, currency) }),
       });
     });
   }
@@ -43,7 +45,7 @@ export default function GoalActions(props: {
     start(async () => {
       const res = await createInvite(goalId, relationship);
       if ("code" in res && res.code) setInvite({ url: `${window.location.origin}/unirse/${res.code}`, rel: relationship });
-      else setMsg({ level: "bad", text: ("error" in res && res.error) || "No pudimos crear la invitación." });
+      else setMsg({ level: "bad", text: ("error" in res && res.error) || t("No pudimos crear la invitación.") });
     });
   }
 
@@ -62,49 +64,49 @@ export default function GoalActions(props: {
       {msg && <div className={`notice ${msg.level}`} role="status">{msg.text}</div>}
 
       {doneThisWeek ? (
-        <div className="owe"><b>✓ Listo por esta semana. ¡Nos vemos el lunes!</b></div>
+        <div className="owe"><b>✓ {t("Listo por esta semana. ¡Nos vemos el lunes!")}</b></div>
       ) : myWeekly > 0 ? (
         <div className="owe">
-          <span className="small">{shared ? "Tu parte esta semana" : "Esta semana, aparta"}</span>
+          <span className="small">{shared ? t("Tu parte esta semana") : t("Esta semana, aparta")}</span>
           <span className="num lg">{money(myWeekly, currency)}</span>
-          <span className="small">Tú mueves el dinero a tu ahorro. Monti nunca toca tu cuenta.</span>
-          <button className="btn mint" type="button" disabled={pending} onClick={() => contribute(Math.round(myWeekly * 100) / 100)}>Ya lo aparté</button>
+          <span className="small">{t("Tú mueves el dinero a tu ahorro. Monti nunca toca tu cuenta.")}</span>
+          <button className="btn mint" type="button" disabled={pending} onClick={() => contribute(Math.round(myWeekly * 100) / 100)}>{t("Ya lo aparté")}</button>
         </div>
       ) : null}
 
       <div className="card">
-        <b>Agregar dinero</b>
+        <b>{t("Agregar dinero")}</b>
         <div className="two">
-          <input aria-label={`Monto en ${sym}`} className="inp" type="number" inputMode="decimal" min="0" step="0.01" placeholder={`${sym}100`} value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <button className="btn" type="button" disabled={pending || !(Number(amount) > 0)} onClick={() => contribute(Number(amount))}>Agregar</button>
+          <input aria-label={t("Monto en {symbol}", { symbol: sym })} className="inp" type="number" inputMode="decimal" min="0" step="0.01" placeholder={`${sym}100`} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <button className="btn" type="button" disabled={pending || !(Number(amount) > 0)} onClick={() => contribute(Number(amount))}>{t("Agregar")}</button>
         </div>
       </div>
 
       {canInvite && (
         <div className="card">
-          <b>{shared ? "Invitar a alguien más" : "Ahorren esta meta juntos"}</b>
+          <b>{shared ? t("Invitar a alguien más") : t("Ahorren esta meta juntos")}</b>
           <p className="small">
-            Invita a tu pareja, tus hijos, tus papás o amigos. Entran gratis solo a esta meta y sus aportes suman. Pueden ser hasta {MAX_GOAL_PEOPLE} personas.
+            {t("Invita a tu pareja, tus hijos, tus papás o amigos. Entran gratis solo a esta meta y sus aportes suman. Pueden ser hasta {max} personas.", { max: MAX_GOAL_PEOPLE })}
           </p>
           <div className="field">
-            <label htmlFor="rel">¿Quién es?</label>
+            <label htmlFor="rel">{t("¿Quién es?")}</label>
             <select id="rel" className="inp" value={relationship} onChange={(e) => { setRelationship(e.target.value); setInvite(null); }}>
-              {RELATIONSHIPS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+              {RELATIONSHIPS.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
             </select>
           </div>
           {invite ? (
             <>
-              <input aria-label="Link de invitación" className="inp" readOnly value={invite.url} onFocus={(e) => e.currentTarget.select()} />
+              <input aria-label={t("Link de invitación")} className="inp" readOnly value={invite.url} onFocus={(e) => e.currentTarget.select()} />
               <div className="two">
-                <button className="btn alt" type="button" onClick={copy}>{copied ? "Copiado ✓" : "Copiar link"}</button>
-                <a className="btn" href={`https://wa.me/?text=${encodeURIComponent(`Te invito a ahorrar conmigo para "${goalName}" en Monti: ${invite.url}`)}`} target="_blank" rel="noopener noreferrer">
-                  Mandar por WhatsApp
+                <button className="btn alt" type="button" onClick={copy}>{copied ? t("Copiado ✓") : t("Copiar link")}</button>
+                <a className="btn" href={`https://wa.me/?text=${encodeURIComponent(t("Te invito a ahorrar conmigo para \"{goal}\" en Monti: {url}", { goal: goalName, url: invite.url }))}`} target="_blank" rel="noopener noreferrer">
+                  {t("Mandar por WhatsApp")}
                 </a>
               </div>
-              <p className="small">El link sirve una sola vez, para tu {relationshipLabel(invite.rel).toLowerCase()}.</p>
+              <p className="small">{t("El link sirve una sola vez, para tu {who}.", { who: t(relationshipLabel(invite.rel)).toLowerCase() })}</p>
             </>
           ) : (
-            <button className="btn alt" type="button" disabled={pending} onClick={makeInvite}>Crear invitación</button>
+            <button className="btn alt" type="button" disabled={pending} onClick={makeInvite}>{t("Crear invitación")}</button>
           )}
         </div>
       )}
@@ -112,24 +114,24 @@ export default function GoalActions(props: {
       {shared && isOwner && (
         <div className="card">
           <div className="row">
-            <span className="small">Tu parte de cada semana</span>
+            <span className="small">{t("Tu parte de cada semana")}</span>
             <span className="step">
-              <button type="button" aria-label="Menos para mí" disabled={pending || ownerShare <= 10} onClick={() => start(() => setGoalShare(goalId, ownerShare - 10))}>−</button>
+              <button type="button" aria-label={t("Menos para mí")} disabled={pending || ownerShare <= 10} onClick={() => start(() => setGoalShare(goalId, ownerShare - 10))}>−</button>
               <b style={{ minWidth: 52 }}>{ownerShare}%</b>
-              <button type="button" aria-label="Más para mí" disabled={pending || ownerShare >= 90} onClick={() => start(() => setGoalShare(goalId, ownerShare + 10))}>+</button>
+              <button type="button" aria-label={t("Más para mí")} disabled={pending || ownerShare >= 90} onClick={() => start(() => setGoalShare(goalId, ownerShare + 10))}>+</button>
             </span>
           </div>
-          <span className="small">El resto se reparte igual entre los demás.</span>
+          <span className="small">{t("El resto se reparte igual entre los demás.")}</span>
         </div>
       )}
 
       {isOwner ? (
         <button className="btn danger" type="button" disabled={pending} onClick={() => (confirm ? start(() => deleteGoal(goalId)) : setConfirm(true))}>
-          {confirm ? "Toca otra vez para borrar la meta" : "Borrar meta"}
+          {confirm ? t("Toca otra vez para borrar la meta") : t("Borrar meta")}
         </button>
       ) : (
         <button className="btn danger" type="button" disabled={pending} onClick={() => (confirm ? start(() => leaveGoal(goalId)) : setConfirm(true))}>
-          {confirm ? "Toca otra vez para salir de la meta" : "Salir de esta meta"}
+          {confirm ? t("Toca otra vez para salir de la meta") : t("Salir de esta meta")}
         </button>
       )}
     </>

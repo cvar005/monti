@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useClientValue } from "@/lib/useClient";
+import { useT } from "./LangProvider";
 
 type Platform = "ios" | "ios-inapp" | "android" | null;
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
@@ -16,8 +17,8 @@ function detect(): Platform {
   return null;
 }
 
-const ShareIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Compartir" style={{ display: "inline", verticalAlign: "-3px" }}>
+const ShareIcon = ({ label }: { label: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label={label} style={{ display: "inline", verticalAlign: "-3px" }}>
     <path d="M12 3v12M8 7l4-4 4 4" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
   </svg>
 );
@@ -28,6 +29,7 @@ const ShareIcon = () => (
  * login separate from Safari's).
  */
 export default function InstallGuide({ onSkip }: { onSkip?: () => void }) {
+  const t = useT();
   const platform = useClientValue<Platform>(detect, null);
   const [installEvent, setInstallEvent] = useState<InstallEvent | null>(null);
 
@@ -44,31 +46,31 @@ export default function InstallGuide({ onSkip }: { onSkip?: () => void }) {
 
   return (
     <div className="card" style={{ color: "var(--ink)" }}>
-      <b style={{ fontSize: 17 }}>Instala Monti en tu teléfono</b>
+      <b style={{ fontSize: 17 }}>{t("Instala Monti en tu teléfono")}</b>
       {platform === "ios-inapp" && (
         <p style={{ fontSize: 14 }}>
-          Estás dentro de otra app. Toca <b>⋯</b> o el ícono de la brújula y elige <b>Abrir en Safari</b>. Ahí podrás instalar Monti.
+          {t("Estás dentro de otra app. Toca ⋯ o el ícono de la brújula y elige Abrir en Safari. Ahí podrás instalar Monti.")}
         </p>
       )}
       {platform === "ios" && (
         <ol style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 8, fontSize: 14 }}>
-          <li>Toca <ShareIcon /> <b>Compartir</b>, abajo en Safari.</li>
-          <li>Baja y toca <b>Agregar a pantalla de inicio</b>.</li>
-          <li>Toca <b>Agregar</b> y abre Monti desde su ícono.</li>
+          <li><ShareIcon label={t("Compartir")} /> {t("Toca Compartir, abajo en Safari.")}</li>
+          <li>{t("Baja y toca Agregar a pantalla de inicio.")}</li>
+          <li>{t("Toca Agregar y abre Monti desde su ícono.")}</li>
         </ol>
       )}
       {platform === "android" &&
         (installEvent ? (
           <button className="btn" type="button" onClick={async () => { await installEvent.prompt(); setInstallEvent(null); }}>
-            Instalar Monti
+            {t("Instalar Monti")}
           </button>
         ) : (
-          <p style={{ fontSize: 14 }}>Toca el menú <b>⋮</b> de Chrome y elige <b>Instalar app</b> o <b>Agregar a la pantalla principal</b>.</p>
+          <p style={{ fontSize: 14 }}>{t("Toca el menú ⋮ de Chrome y elige Instalar app o Agregar a la pantalla principal.")}</p>
         ))}
-      <p className="small">Así se abre como app, a pantalla completa, y no tienes que volver a entrar.</p>
+      <p className="small">{t("Así se abre como app, a pantalla completa, y no tienes que volver a entrar.")}</p>
       {onSkip && (
         <button className="link" type="button" onClick={onSkip} style={{ justifySelf: "start" }}>
-          Ya la instalé o prefiero seguir aquí
+          {t("Ya la instalé o prefiero seguir aquí")}
         </button>
       )}
     </div>

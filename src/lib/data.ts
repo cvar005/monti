@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getLang } from "@/lib/lang";
 import { CATEGORIES, monthInfo, todayISO, VARIABLE_CATEGORIES, type CategoryId, type Split } from "@/lib/monti";
 
 export type Profile = {
@@ -61,7 +62,7 @@ export type MonthSummary = Awaited<ReturnType<typeof getMonthSummary>>;
 /** Everything the home and budget screens need for the current month. */
 export async function getMonthSummary() {
   const { supabase, user, profile } = await requireFullAccess();
-  const m = monthInfo();
+  const m = monthInfo(todayISO(), await getLang());
   const [{ data: tx }, { data: contrib }] = await Promise.all([
     supabase
       .from("transactions")
