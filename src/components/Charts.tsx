@@ -25,7 +25,7 @@ export function PaceChart({ s }: { s: MonthSummary }) {
         <div className="small">de {money(B, cur, 0)} presupuestado en {s.month.name}</div>
       </div>
       <div className="chart">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Vas ${bubble} del promedio`}>
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Vas ${bubble} del ritmo promedio`}>
           <defs>
             <linearGradient id="pl" x1="0" x2="1"><stop offset="0" stopColor="#9FE8CB" /><stop offset="1" stopColor={col} /></linearGradient>
             <linearGradient id="pa" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".22" /><stop offset="1" stopColor={col} stopOpacity="0" /></linearGradient>
@@ -35,7 +35,7 @@ export function PaceChart({ s }: { s: MonthSummary }) {
           {s.byDay.length > 0 && <polygon points={`${X(1).toFixed(1)},${H - P} ${line} ${ex.toFixed(1)},${H - P}`} fill="url(#pa)" />}
           {s.byDay.length > 1 && <polyline points={line} fill="none" stroke="url(#pl)" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round" />}
           <circle cx={ex} cy={ey} r="5.5" fill="#fff" stroke={col} strokeWidth="3" />
-          <text x={W - P} y={Y(B) - 5} textAnchor="end" fontSize="9" fontWeight="700" fill="#5B6178">Promedio</text>
+          <text x={W - P} y={Y(B) - 5} textAnchor="end" fontSize="9" fontWeight="700" fill="#5B6178">Ritmo promedio</text>
         </svg>
         <span className={`bubble${under ? "" : " over"}`} style={{ left: `${(ex / W) * 100}%`, top: `${(ey / H) * 100}%` }}>{bubble}</span>
       </div>
