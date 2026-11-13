@@ -129,6 +129,21 @@ export async function setTransactionCategory(id: string, newCategory: string) {
   revalidatePath("/", "layout");
 }
 
+export async function updateTransaction(id: string, input: { merchant: string; amount: number; category: string; date: string }) {
+  const { supabase } = await session();
+  const merchant = input.merchant.trim();
+  if (!merchant || !(input.amount > 0)) return { error: "Agrega la tienda y un monto." };
+  if (!CATEGORIES.some((c) => c.id === input.category && c.id !== "goals")) return { error: "Elige una categoría." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || input.date > todayISO()) return { error: "Elige una fecha de hoy o antes." };
+  const { error } = await supabase
+    .from("transactions")
+    .update({ merchant, amount: Math.round(input.amount * 100) / 100, category: input.category, date: input.date, reviewed: true })
+    .eq("id", id);
+  if (error) return { error: "No pudimos guardar el cambio. Intenta de nuevo." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 export async function deleteTransaction(id: string) {
   const { supabase } = await session();
   await supabase.from("transactions").delete().eq("id", id);

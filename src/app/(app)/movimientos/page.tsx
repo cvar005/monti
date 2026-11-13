@@ -1,36 +1,85 @@
 import Link from "next/link";
 import { requireFullAccess, type Transaction } from "@/lib/data";
-import { friendlyDate, money, ruleCategory, SPEND_CATEGORIES, todayISO } from "@/lib/monti";
+import { friendlyDate, money, PERIODS, periodRange, ruleCategory, SPEND_CATEGORIES, todayISO } from "@/lib/monti";
 import ExpenseRow from "./ExpenseRow";
 
+const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
 export default async function ExpensesPage({ searchParams }: PageProps<"/movimientos">) {
-  const { c } = await searchParams;
-  const filter = typeof c === "string" && SPEND_CATEGORIES.some((x) => x.id === c) ? c : "all";
+  const sp = await searchParams;
+  const today = todayISO();
+  const filter = typeof sp.c === "string" && SPEND_CATEGORIES.some((x) => x.id === sp.c) ? sp.c : "all";
+  const custom = isDate(sp.desde) || isDate(sp.hasta);
+  const period = custom ? "custom" : typeof sp.p === "string" && PERIODS.some((x) => x.id === sp.p) ? sp.p : "month";
+  const range = custom ? { from: isDate(sp.desde) ? sp.desde : null, to: isDate(sp.hasta) ? sp.hasta : null } : periodRange(period, today);
+  const openId = typeof sp.abrir === "string" ? sp.abrir : null;
+
   const { supabase, profile } = await requireFullAccess();
   let query = supabase
     .from("transactions")
     .select("id, merchant, amount, category, date, source, ai_confidence, reviewed")
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(500);
   if (filter !== "all") query = query.eq("category", filter);
+  if (range.from) query = query.gte("date", range.from);
+  if (range.to) query = query.lte("date", range.to);
   const [{ data }, { data: rules }] = await Promise.all([query, supabase.from("rules").select("match, category")]);
-  const tx = ((data ?? []) as Transaction[]).map((t) => ({ ...t, amount: Number(t.amount) }));
-  const today = todayISO();
+  const tx = ((data ?? []) as Transaction[]).filter((t) => t.category !== "goals").map((t) => ({ ...t, amount: Number(t.amount) }));
+  const total = tx.reduce((s, t) => s + t.amount, 0);
 
   const groups = new Map<string, typeof tx>();
   tx.forEach((t) => groups.set(t.date, [...(groups.get(t.date) ?? []), t]));
 
+  // Links keep the other filter: category chips keep the dates, date chips keep the category.
+  const dateQs = custom ? { ...(range.from ? { desde: range.from } : {}), ...(range.to ? { hasta: range.to } : {}) } : period === "month" ? {} : { p: period };
+  const href = (q: Record<string, string | undefined>) => {
+    const s = new URLSearchParams(Object.entries(q).filter((e): e is [string, string] => !!e[1])).toString();
+    return s ? `/movimientos?${s}` : "/movimientos";
+  };
+  const catQs = filter === "all" ? {} : { c: filter };
+
   return (
     <>
       <div className="hdr"><h1>Gastos</h1></div>
+
       <div className="chips">
-        <Link className="chip" aria-pressed={filter === "all"} href="/movimientos">Todo</Link>
-        {SPEND_CATEGORIES.map((x) => (
-          <Link key={x.id} className="chip" aria-pressed={filter === x.id} href={`/movimientos?c=${x.id}`}>{x.icon} {x.label}</Link>
+        {PERIODS.map((x) => (
+          <Link key={x.id} className="chip" aria-pressed={period === x.id} href={href({ ...catQs, ...(x.id === "month" ? {} : { p: x.id }) })}>{x.label}</Link>
         ))}
       </div>
-      {tx.length === 0 && <div className="empty">No hay gastos aquí todavía. <Link className="link" href="/agregar">Agrega uno</Link></div>}
+      <details className="range" open={custom}>
+        <summary>Elegir fechas</summary>
+        <form action="/movimientos" className="two">
+          {filter !== "all" && <input type="hidden" name="c" value={filter} />}
+          <div className="field">
+            <label htmlFor="desde">Desde</label>
+            <input id="desde" name="desde" type="date" className="inp" max={today} defaultValue={range.from ?? ""} />
+          </div>
+          <div className="field">
+            <label htmlFor="hasta">Hasta</label>
+            <input id="hasta" name="hasta" type="date" className="inp" max={today} defaultValue={range.to ?? ""} />
+          </div>
+          <button className="btn alt" type="submit" style={{ gridColumn: "1 / -1" }}>Ver gastos</button>
+        </form>
+      </details>
+
+      <div className="chips">
+        <Link className="chip" aria-pressed={filter === "all"} href={href(dateQs)}>Todas</Link>
+        {SPEND_CATEGORIES.map((x) => (
+          <Link key={x.id} className="chip" aria-pressed={filter === x.id} href={href({ ...dateQs, c: x.id })}>{x.icon} {x.label}</Link>
+        ))}
+      </div>
+
+      {tx.length > 0 && (
+        <div className="card" style={{ gap: 2 }}>
+          <span className="small">Total {custom ? "en esas fechas" : PERIODS.find((x) => x.id === period)?.label.toLowerCase()}</span>
+          <span className="num lg">{money(total, profile.currency)}</span>
+          <span className="small">{tx.length} {tx.length === 1 ? "gasto" : "gastos"}</span>
+        </div>
+      )}
+
+      {tx.length === 0 && <div className="empty">No hay gastos en estas fechas. <Link className="link" href="/agregar">Agrega uno</Link></div>}
       {[...groups.entries()].map(([date, rows]) => (
         <div key={date} className="card flat">
           <div className="row" style={{ paddingTop: 12 }}>
@@ -38,7 +87,7 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/movimie
             <span className="small">-{money(rows.reduce((s, r) => s + r.amount, 0), profile.currency)}</span>
           </div>
           {rows.map((t) => (
-            <ExpenseRow key={t.id} t={t} currency={profile.currency} hasRule={ruleCategory(t.merchant, rules ?? []) === t.category} />
+            <ExpenseRow key={t.id} t={t} currency={profile.currency} today={today} defaultOpen={t.id === openId} hasRule={ruleCategory(t.merchant, rules ?? []) === t.category} />
           ))}
         </div>
       ))}

@@ -162,12 +162,25 @@ a { color: inherit; text-decoration: none; }
 .pace svg { display: block; width: 100%; height: auto; overflow: visible; }
 .bubble { position: absolute; transform: translate(-50%, -165%); background: var(--good); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 8px; white-space: nowrap; pointer-events: none; }
 .bubble.over { background: var(--bad); }
-.rings { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin-inline: -18px; padding-inline: 18px; }
-.rings::-webkit-scrollbar { display: none; }
-.ring { flex: none; width: 74px; display: grid; justify-items: center; gap: 1px; position: relative; }
-.ring svg { width: 66px; height: 66px; display: block; }
-.ring .em { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 66px; height: 66px; display: grid; place-items: center; font-size: 24px; }
-.ring b { font-size: 13px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ring { background: #fff; border-radius: 20px; padding: 14px 6px 12px; display: grid; justify-items: center; gap: 1px; text-align: center; min-width: 0; }
+.ring.over { background: var(--coral-soft); }
+.ring.over .small { color: var(--bad); }
+.ring .dial { position: relative; width: 58px; height: 58px; margin-bottom: 6px; }
+.ring svg { width: 100%; height: 100%; display: block; }
+.ring .em { position: absolute; inset: 0; display: grid; place-items: center; font-size: 22px; }
+.ring .name { font-size: 12px; font-weight: 700; color: var(--muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ring b { font-family: var(--display); font-size: 16px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.ring .small { font-size: 11px; }
+.range summary { cursor: pointer; color: var(--teal); font-weight: 800; font-size: 13px; list-style: none; }
+.range summary::-webkit-details-marker { display: none; }
+.range summary::before { content: "📅 "; }
+.range form { margin-top: 10px; background: #fff; border-radius: 18px; padding: 12px; }
+.glist { display: grid; gap: 10px; }
+.gline { background: #fff; border-radius: 20px; padding: 12px 14px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; }
+.gline .thumb { width: 46px; height: 46px; border-radius: 14px; min-height: 0; padding: 0; }
+.gline .info { display: grid; gap: 6px; min-width: 0; }
+.gline .info b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Onboarding and auth */
 .center-page { min-height: 100%; display: flex; flex-direction: column; padding: 24px 22px; gap: 18px; max-width: 480px; margin: 0 auto; background: var(--app); }

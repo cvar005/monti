@@ -79,6 +79,31 @@ export function parseISO(s: string) {
   return new Date(y, m - 1, d || 1);
 }
 
+export function isoDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export const PERIODS = [
+  { id: "today", label: "Hoy" },
+  { id: "week", label: "Esta semana" },
+  { id: "month", label: "Este mes" },
+  { id: "year", label: "Este año" },
+  { id: "all", label: "Todo" },
+] as const;
+
+/** Inclusive start and end dates for a period preset; weeks start on Monday. */
+export function periodRange(p: string, today = todayISO()): { from: string | null; to: string | null } {
+  if (p === "today") return { from: today, to: today };
+  if (p === "week") {
+    const start = parseISO(today);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    return { from: isoDate(start), to: today };
+  }
+  if (p === "month") return { from: `${today.slice(0, 7)}-01`, to: today };
+  if (p === "year") return { from: `${today.slice(0, 4)}-01-01`, to: today };
+  return { from: null, to: null };
+}
+
 export function monthInfo(today = todayISO()) {
   const d = parseISO(today);
   const year = d.getFullYear();

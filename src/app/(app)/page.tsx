@@ -39,26 +39,25 @@ export default async function HomePage() {
         <span className="label">Tus metas</span>
         <Link className="link" href="/metas">Ver todas</Link>
       </div>
-      <div className="gstrip">
-        {g.goals.map((goal) => {
-          const p = (goal.saved / goal.target) * 100;
-          return (
-            <Link key={goal.id} href={`/metas/${goal.id}`} className="gcard">
-              <div className={`hero sm th-${goal.theme}`}>
-                {goal.shared && <span className="avs"><span className="av">👥</span></span>}
-                <h3>{goal.name}</h3>
-              </div>
-              <div className="body">
-                <div className="row"><span className="num md">{money(goal.saved, cur, 0)}</span><span className="small">{Math.round(p)}%</span></div>
-                <div className="bar"><i className="teal" style={{ width: `${Math.min(100, p)}%` }} /></div>
-              </div>
-            </Link>
-          );
-        })}
-        <Link href="/metas/nueva" className="gcard" style={{ width: 120, placeItems: "center", color: "var(--teal)", fontWeight: 800, border: "2px dashed #C9D3E3", background: "transparent" }}>
-          + Nueva meta
-        </Link>
-      </div>
+      {g.goals.length === 0 ? (
+        <div className="empty" style={{ background: "#fff", borderRadius: 20 }}>Aún no tienes metas. <Link className="link" href="/metas/nueva">Crea la primera</Link></div>
+      ) : (
+        <div className="glist">
+          {g.goals.slice(0, 3).map((goal) => {
+            const p = (goal.saved / goal.target) * 100;
+            return (
+              <Link key={goal.id} href={`/metas/${goal.id}`} className="gline">
+                <span className={`hero thumb th-${goal.theme}`} aria-hidden="true" />
+                <span className="info">
+                  <span className="row"><b>{goal.name}{goal.shared ? " 👥" : ""}</b><span className="num" style={{ fontSize: 15 }}>{Math.round(p)}%</span></span>
+                  <span className="bar"><i className="teal" style={{ width: `${Math.min(100, p)}%` }} /></span>
+                  <span className="small">{money(goal.saved, cur, 0)} de {money(goal.target, cur, 0)}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <div className="card">
         <div className="row">

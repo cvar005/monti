@@ -2,7 +2,7 @@ import Link from "next/link";
 import { money } from "@/lib/monti";
 import type { MonthSummary } from "@/lib/data";
 
-/** Cumulative spending this month against an even-pace line, with an under/over bubble on today. */
+/** Cumulative spending this month against the average-pace line (budget spread evenly over the month), with an under/over bubble on today. */
 export function PaceChart({ s }: { s: MonthSummary }) {
   const B = s.totalBudget || 1;
   const cur = s.profile.currency;
@@ -25,7 +25,7 @@ export function PaceChart({ s }: { s: MonthSummary }) {
         <div className="small">de {money(B, cur, 0)} presupuestado en {s.month.name}</div>
       </div>
       <div className="chart">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Vas ${bubble} del ritmo parejo`}>
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Vas ${bubble} del promedio`}>
           <defs>
             <linearGradient id="pl" x1="0" x2="1"><stop offset="0" stopColor="#9FE8CB" /><stop offset="1" stopColor={col} /></linearGradient>
             <linearGradient id="pa" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".22" /><stop offset="1" stopColor={col} stopOpacity="0" /></linearGradient>
@@ -35,7 +35,7 @@ export function PaceChart({ s }: { s: MonthSummary }) {
           {s.byDay.length > 0 && <polygon points={`${X(1).toFixed(1)},${H - P} ${line} ${ex.toFixed(1)},${H - P}`} fill="url(#pa)" />}
           {s.byDay.length > 1 && <polyline points={line} fill="none" stroke="url(#pl)" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round" />}
           <circle cx={ex} cy={ey} r="5.5" fill="#fff" stroke={col} strokeWidth="3" />
-          <text x={W - P} y={Y(B) - 5} textAnchor="end" fontSize="9" fontWeight="700" fill="#5B6178">Ritmo parejo</text>
+          <text x={W - P} y={Y(B) - 5} textAnchor="end" fontSize="9" fontWeight="700" fill="#5B6178">Promedio</text>
         </svg>
         <span className={`bubble${under ? "" : " over"}`} style={{ left: `${(ex / W) * 100}%`, top: `${(ey / H) * 100}%` }}>{bubble}</span>
       </div>
@@ -61,14 +61,17 @@ export function Rings({ s }: { s: MonthSummary }) {
           const d = c.budget - c.spent;
           const col = c.pct >= 100 ? "#FF6B6B" : c.pct >= 80 ? "#FFB547" : "#3EE6A8";
           return (
-            <Link key={c.id} href={`/movimientos?c=${c.id}`} className="ring" aria-label={c.label}>
-              <svg viewBox="0 0 64 64">
-                <circle cx="32" cy="32" r="27" fill={c.pct >= 100 ? "#FFE3E3" : "#fff"} stroke="#E8EDF5" strokeWidth="6" />
-                <circle cx="32" cy="32" r="27" fill="none" stroke={col} strokeWidth="6" strokeLinecap="round" strokeDasharray={C.toFixed(1)} strokeDashoffset={(C * (1 - Math.min(c.pct, 100) / 100)).toFixed(1)} transform="rotate(-90 32 32)" />
-              </svg>
-              <span className="em">{c.icon}</span>
+            <Link key={c.id} href={`/movimientos?c=${c.id}`} className={`ring${d < 0 ? " over" : ""}`}>
+              <span className="dial">
+                <svg viewBox="0 0 64 64" aria-hidden="true">
+                  <circle cx="32" cy="32" r="27" fill="none" stroke="#E8EDF5" strokeWidth="6" />
+                  <circle cx="32" cy="32" r="27" fill="none" stroke={col} strokeWidth="6" strokeLinecap="round" strokeDasharray={C.toFixed(1)} strokeDashoffset={(C * (1 - Math.min(c.pct, 100) / 100)).toFixed(1)} transform="rotate(-90 32 32)" />
+                </svg>
+                <span className="em">{c.icon}</span>
+              </span>
+              <span className="name">{c.label}</span>
               <b>{money(Math.abs(d), s.profile.currency, 0)}</b>
-              <span className="small" style={{ color: d < 0 ? "var(--bad)" : undefined }}>{d < 0 ? "de más" : "quedan"}</span>
+              <span className="small">{d < 0 ? "excedido" : "disponible"}</span>
             </Link>
           );
         })}
